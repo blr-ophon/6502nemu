@@ -15,12 +15,8 @@
 
 typedef struct cpu6502{
     uint8_t reg_A;
-    uint8_t reg_B;
-    uint8_t reg_C;
-    uint8_t reg_D;
-    uint8_t reg_E;
-    uint8_t reg_H;
-    uint8_t reg_L;
+    uint8_t reg_X;
+    uint8_t reg_Y;
 
     uint16_t PC;
     uint16_t SP;
@@ -31,12 +27,12 @@ typedef struct cpu6502{
     Memory *memory;
     Flags flags;
 
-    bool RD_pin:1;    //active when 0
-    bool WR_pin:1;    //active when 0
-    bool IO_M_pin:1;  //memory when 0, IO when 1
-    bool rst_pin:1;
-    bool interrupt_enable:1;
-    uint8_t interrupt_address;
+    //pins
+    bool IRQ_pin:1;   //active low
+    bool NMI_pin:1;   //active low
+    bool RW_pin:1;    //read(1) or write(0)
+                      
+    //for timing/debugging purposes
     uint32_t step_count;
 } Cpu6502;
 
