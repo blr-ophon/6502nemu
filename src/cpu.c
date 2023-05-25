@@ -23,11 +23,11 @@ void cpu_init(Cpu6502 *cpu, Memory *memory){
 
 void cpu_fetch_execute(Cpu6502 *cpu){
 
-    if(cpu->rst_pin && cpu->interrupt_enable){ //RST, byte
-        cpu->rst_pin = 0;
-        stack_push16(cpu, cpu->PC);
-        cpu->PC = INTERRUPT_VECTOR_SIZE * cpu->interrupt_address;
-    }
+    //if(cpu->rst_pin && cpu->interrupt_enable){ //RST, byte
+    //    cpu->rst_pin = 0;
+    //    stack_push16(cpu, cpu->PC);
+    //    cpu->PC = INTERRUPT_VECTOR_SIZE * cpu->interrupt_address;
+    //}
 
     uint8_t opcode = memory_read8(cpu->memory, cpu->PC);
 //    printf("%#04x\n", opcode);
@@ -46,92 +46,48 @@ void cpu_fetch_execute(Cpu6502 *cpu){
 }
 
 void cpu_exec_instruction(Cpu6502 *cpu, uint8_t *opcode){
-    //CREATE A FUNCTION FOR EACH INSTRUCTION IN SEPARATE FILE instructions.c
-    uint16_t reg_M_adr = read_reg_HL(cpu);
-    uint8_t reg_M = cpu->memory->memory[reg_M_adr];
-    //could be defined in config.h
-    //reg_M = memory content pointed by HL
     switch(*opcode){
-        case 0x00: //NOP
+        case 0x00: //BRK
+            //TODO: software interrupt
             break;
-        case 0x01: //LXI B, word 
+        case 0x01: //ORA ((n, X))
+            {
+            uint16_t nn = memory_read8(cpu->memory, ++cpu->PC);
+            nn +=  cpu->reg_X;
+            uint16_t addr = cpu->memory->memory[nn];
+            instruction_ora(cpu, cpu->memory->memory[addr]);
+            break;
+            }
+        case 0x05: //ORA (n) 
+            {
+            uint16_t addr = memory_read8(cpu->memory, ++cpu->PC);
+            instruction_ora(cpu, cpu->memory->memory[addr]);
+            break;
+            }
+        case 0x06: //ASL
+            break;
+        case 0x08: //PHP (push flags register to stack) 
+            {
+            uint8_t flags_reg = flags_load_byte(&cpu->flags);
+            stack_push8(cpu, cpu->reg_A);
+            stack_push8(cpu, flags_reg);
+            break;
+            }
+        case 0x09: //ORA #n
+            {
+            uint16_t operand = memory_read8(cpu->memory, ++cpu->PC);
+            instruction_ora(cpu, operand);
+            break;
+            }
+        case 0x0a: //ASL
+            break;
+        case 0x0d: //ORA (nn)
             {
             uint16_t word = cpu_GetLIWord(cpu);
-            write_reg_BC(cpu,word);
+            test_normal_flags(&cpu->flags, cpu->memory->memory[word]);
             break;
             }
-        case 0x02: //STAX B 
-            {
-            uint16_t adr = read_reg_BC(cpu);
-            cpu->memory->memory[adr] = cpu->reg_A;
-            break;
-            }
-        case 0x03: //INX B 
-            {
-            uint16_t word = read_reg_BC(cpu);
-            word ++;
-            write_reg_BC(cpu, word);
-            break;
-            }
-        case 0x04: //INR B 
-            test_flag_ac(&cpu->flags, cpu->reg_B, 0x01, 0);
-            cpu->reg_B++;
-            test_normal_flags(&cpu->flags, cpu->reg_B);
-            break;
-        case 0x05: //DCR B 
-            test_flag_ac(&cpu->flags, cpu->reg_B, 0xff, 0); 
-            cpu->reg_B--;
-            test_normal_flags(&cpu->flags, cpu->reg_B);
-            break;
-        case 0x06: //MVI B, byte 
-            cpu->reg_B = memory_read8(cpu->memory, ++cpu->PC);
-            break;
-        case 0x07: //RLC 
-            {
-            uint8_t bit7 = cpu->reg_A & 0b10000000;
-            cpu->reg_A <<= 1;
-            if(bit7){
-                cpu->flags.cy = 1;
-                cpu->reg_A |= 0b00000001;
-            }else{
-                cpu->flags.cy = 0;
-                cpu->reg_A &= ~0b00000001;
-            }
-            break;
-            }
-        case 0x09: //DAD B 
-            {
-            uint16_t word1 = read_reg_HL(cpu);
-            uint16_t word2 = read_reg_BC(cpu);
-            test_carry_flag16(&cpu->flags, (uint32_t) word1 + word2);
-            word1 += word2;
-            write_reg_HL(cpu, word1);
-            break;
-            }
-        case 0x0a: //LDAX B 
-            {
-            uint16_t adr = read_reg_BC(cpu);
-            cpu->reg_A = cpu->memory->memory[adr];
-            break;
-            }
-        case 0x0b: //DCX B 
-            {
-            uint16_t word = read_reg_BC(cpu);
-            write_reg_BC(cpu, word - 1);
-            break;
-            }
-        case 0x0c: //INR C 
-            test_flag_ac(&cpu->flags, cpu->reg_C, 0x01, 0);
-            cpu->reg_C++;
-            test_normal_flags(&cpu->flags, cpu->reg_C);
-            break;
-        case 0x0d: //DCR C 
-            test_flag_ac(&cpu->flags, cpu->reg_C, 0xff, 0);
-            cpu->reg_C--;
-            test_normal_flags(&cpu->flags, cpu->reg_C);
-            break;
-        case 0x0e: //MVI C, byte 
-            cpu->reg_C = memory_read8(cpu->memory, ++cpu->PC);
+        case 0x0e: //ASL
             break;
         case 0x0f: //RRC 
             {
